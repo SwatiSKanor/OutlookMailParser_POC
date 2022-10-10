@@ -10,6 +10,7 @@
     <PackageReference Include="EASendMail" Version="7.9.0.6" />
     <PackageReference Include="Microsoft.Exchange.WebServices.NETStandard" Version="1.1.3" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.46.2" />
+    <PackageReference Include="Microsoft.Office.Interop.Outlook" Version="15.0.4797.1004" />
     <PackageReference Include="Microsoft.SharePoint.Client" Version="14.0.4762.1000" />
     <PackageReference Include="Microsoft.SharePoint.Client.Online.CSOM" Version="15.0.4919.1000" />
     <PackageReference Include="Microsoft.SharePointOnline.CSOM" Version="16.1.22810.12000" />
