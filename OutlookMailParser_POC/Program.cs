@@ -28,57 +28,97 @@ namespace OutlookMailParser_POC
 
 
         static async System.Threading.Tasks.Task Main(string[] args)
-            {
-          //  CreateNewFolderSharePoint();
+        {
+            //  CreateNewFolderSharePoint();
             // Using Microsoft.Identity.Client 4.22.0  
             // thinkbridge active directory - Shared inbox outlook poc 
             var cca = ConfidentialClientApplicationBuilder
-                .Create("ed92b7ff-019d-4e70-b04c-dd38a95fdeec")  //appId
-                .WithClientSecret("qPu8Q~rRu5AEwMy9U62tCxW87bl9OO1PMI~zwcWk")   //client SECRETE
-                .WithTenantId("b69d82df-4ebe-474d-9ac7-00efbf13427e")   //  CLIENT TENANT ID
+                .Create("802023a0-57d0-4949-bc02-7c209bcb02e9")  //appId
+                .WithClientSecret("OSs8Q~xE1j_crnwshg_ztlyycqewuBPvQh-wEcRP")   //client SECRETE
+                .WithTenantId("e5f294ba-7871-4659-a1b4-ba9cbd7c2eed")   //  CLIENT TENANT ID
                 .Build();
 
 
             var ewsScopes = new string[] { "https://outlook.office365.com/.default" };
 
-                try
-                {
-                    var authResult = await cca.AcquireTokenForClient(ewsScopes).ExecuteAsync();
+            try
+            {
+                var authResult = await cca.AcquireTokenForClient(ewsScopes).ExecuteAsync();
 
-                    // Configure the ExchangeService with the access token
+                // Configure the ExchangeService with the access token
                 //    var ewsClient = new ExchangeService();
-                    service.Url = new Uri("https://outlook.office365.com/EWS/Exchange.asmx");
+                service.Url = new Uri("https://outlook.office365.com/EWS/Exchange.asmx");
                 service.Credentials = new OAuthCredentials(authResult.AccessToken);
                 service.ImpersonatedUserId =
-                        new ImpersonatedUserId(ConnectingIdType.SmtpAddress, "swati@thinkbridge.in");
+                        new ImpersonatedUserId(ConnectingIdType.SmtpAddress, "rpotnis@psgglobalsolutions.com");
 
                 //Include x-anchormailbox header
-                service.HttpHeaders.Add("X-AnchorMailbox", "swati@thinkbridge.in");
+             //   service.HttpHeaders.Add("X-AnchorMailbox", "swati@thinkbridge.in");
 
-                EmailMessage email = new EmailMessage(service);
 
-                ReplytoSharedInboxEmail();
+                //Microsoft.Exchange.WebServices.Data.Folder rootfolder = Microsoft.Exchange.WebServices.Data.Folder.Bind(service, WellKnownFolderName.MsgFolderRoot).Result;
+                //rootfolder.Load();
+                //foreach( Folder fo in rootfolder)
+                //{
+                //    var f = fo.
+                //}
+
+                     ReplytoSharedInboxEmail();
 
                 ExtendedPropertyDefinition replyEmail = new ExtendedPropertyDefinition(DefaultExtendedPropertySet.PublicStrings, "replyemail", MapiPropertyType.Boolean);
 
 
                 PropertySet set = new PropertySet(BasePropertySet.IdOnly, ItemSchema.Subject, ItemSchema.UniqueBody, ItemSchema.Attachments,
-             EmailMessageSchema.Body, EmailMessageSchema.From, EmailMessageSchema.ToRecipients, EmailMessageSchema.DateTimeReceived, EmailMessageSchema.HasAttachments,ItemSchema.InReplyTo, replyEmail); //ItemSchema.TextBody,
+             EmailMessageSchema.Body, EmailMessageSchema.From, EmailMessageSchema.ToRecipients, EmailMessageSchema.DateTimeReceived, EmailMessageSchema.HasAttachments, ItemSchema.InReplyTo, replyEmail); //ItemSchema.TextBody,
 
 
                 // Make an EWS call
-                //    SearchFilter foldername = new SearchFilter.IsEqualTo(FolderSchema.DisplayName, "FastaffTravelUpdates");
-                //  SearchFilter subjectFilter = new SearchFilter.ContainsSubstring(ItemSchema.Subject, "[EXTERNAL] License nursys Jessica Welch (369580)");
-                //    var folders = service.FindFolders(WellKnownFolderName.MsgFolderRoot, foldername, new FolderView(100)).Result;
+                //SearchFilter foldername = new SearchFilter.IsEqualTo(FolderSchema.DisplayName, "swati k");
+                //  SearchFilter subjectFilter = new SearchFilter.ContainsSubstring(ItemSchema.Subject, "473616-Test7 T");
 
+
+            
                 SearchFilter time = new SearchFilter.IsLessThanOrEqualTo(ItemSchema.DateTimeReceived, DateTime.UtcNow);
                 SearchFilter reply = new SearchFilter.Exists(replyEmail);
 
-                   time = new SearchFilterCollection(LogicalOperator.Or, time, reply);
+                time = new SearchFilterCollection(LogicalOperator.Or, time, reply);
 
                 ItemView view = new ItemView(100);
 
-                var findResults = service.FindItems(new FolderId(WellKnownFolderName.Inbox, "compassa@thinkbridge.in"),time,view).Result;
+                var findResults = service.FindItems(new FolderId(WellKnownFolderName.Inbox, "psgsharedinbox@psgglobal.com"), time, view).Result;
+
+                //   var findResults1 = service.FindItems(new FolderId(WellKnownFolderName.Root, "compassa@thinkbridge.in"), time, view).Result;
+
+                //    Microsoft.Exchange.WebServices.Data.Folder rootfolder = Microsoft.Exchange.WebServices.Data.Folder.Bind(service, WellKnownFolderName.MsgFolderRoot).Result;
+
+                #region archival movement of mails
+                FolderView fview = new FolderView(1000);
+                fview.PropertySet = new PropertySet(BasePropertySet.IdOnly);
+                fview.PropertySet.Add(FolderSchema.DisplayName);
+                fview.PropertySet.Add(FolderSchema.FolderClass);
+                fview.PropertySet.Add(FolderSchema.ParentFolderId);
+
+                fview.Traversal = FolderTraversal.Deep;
+
+
+                var ss = service.FindFolders(new FolderId(WellKnownFolderName.Root, "psgsharedinbox@psgglobal.com"), fview).Result;
+
+                var fss = ss.FirstOrDefault(x => x.DisplayName == "Shared Inbox ArchivalMail");
+
+                if (fss == null)
+                {// Create a custom folder.
+                    Microsoft.Exchange.WebServices.Data.Folder folder = new Microsoft.Exchange.WebServices.Data.Folder(service);
+
+                    folder.DisplayName = "Shared Inbox ArchivalMail";
+                    folder.FolderClass = "IPF.Note";
+                    // Save the folder as a child folder of the Inbox.
+                    await folder.Save(new FolderId(WellKnownFolderName.MsgFolderRoot, "psgsharedinbox@psgglobal.com"));
+                    fss = folder;
+                }
+                var fclass = fss.FolderClass;
+
+
+                #endregion
 
                 foreach (Item item in findResults)
                 {
@@ -89,10 +129,11 @@ namespace OutlookMailParser_POC
                     message.TryGetProperty(replyEmail, out responseEmail);
                     if (responseEmail != null)
                     {
-                      isReplyEmail   = (Boolean)responseEmail;
+                        isReplyEmail = (Boolean)responseEmail;
 
                     }
-                    if (!isReplyEmail)
+
+                    if (!isReplyEmail || message.From.Address != "psgsharedinbox@psgglobal.com")
                     {
                         var subject = message.Subject;
                         var recipient = message.ToRecipients;
@@ -101,7 +142,7 @@ namespace OutlookMailParser_POC
                         var from = message.From;
                         var conversationId = item.ConversationId;
 
-    
+
 
 
                         // Request conversation items. This results in a call to the service.
@@ -169,62 +210,96 @@ namespace OutlookMailParser_POC
                         //}
                         #endregion
                     }
+                    else
+                    {
+                        // Request conversation items. This results in a call to the service.
+                        ConversationResponse response = service.GetConversationItems
+       (item.ConversationId, set, null, null,
+       ConversationSortOrder.TreeOrderAscending).Result;
+                        foreach(ConversationNode node in response.ConversationNodes)
+                        {
+                            foreach (Item nodeItem in node.Items)
+                            {
+                               await nodeItem.Move(fss.Id);
+                            }
+                                //await message.Move(fss.Id);
+
+                        }
+
+                    }
+
 
                 }
 
             }
             catch (MsalException ex)
-                {
-                    Console.WriteLine($"Error acquiring access token: {ex}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error: {ex}");
-                }
-
-                if (System.Diagnostics.Debugger.IsAttached)
-                {
-                    Console.WriteLine("Hit any key to exit...");
-                    Console.ReadKey();
-                }
+            {
+                Console.WriteLine($"Error acquiring access token: {ex}");
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex}");
+            }
+
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                Console.WriteLine("Hit any key to exit...");
+                Console.ReadKey();
+            }
+        }
         public static async void ReplytoSharedInboxEmail()
         {
 
-                        var mailId = "AAMkADcwYmE1ZjFlLTFkNGMtNGUzMC04ZTA5LWU5YWY2MmIzYTI0MABGAAAAAAB+kXU0TcU4QILxCi62HT45BwBZ3Hlh4f4VR6AUTaq0jP5TAAAAAAEMAABZ3Hlh4f4VR6AUTaq0jP5TAAAHEdOSAAA=";
+            var mailId = "AAMkADk1MGRmZjg2LTNiNGEtNDc0NS1iZjJlLThkNTZiMDYxNDBiYQBGAAAAAADuPM+QeU3mT7pKjnOTG3yVBwDqkvPFbnQ5R6WkEZICnT8cAAAAAAEMAADqkvPFbnQ5R6WkEZICnT8cAAAHZvZ6AAA=";
             PropertySet set = new PropertySet(BasePropertySet.IdOnly, ItemSchema.Subject, ItemSchema.UniqueBody, ItemSchema.Attachments,
-         EmailMessageSchema.Body, EmailMessageSchema.From, EmailMessageSchema.ToRecipients, EmailMessageSchema.DateTimeReceived, EmailMessageSchema.HasAttachments,EmailMessageSchema.ReplyTo,EmailMessageSchema.Sender); //ItemSchema.TextBody,
+         EmailMessageSchema.Body, EmailMessageSchema.From, EmailMessageSchema.ToRecipients, EmailMessageSchema.DateTimeReceived, EmailMessageSchema.HasAttachments, EmailMessageSchema.ReplyTo, EmailMessageSchema.Sender); //ItemSchema.TextBody,
+
+            FolderView fview = new FolderView(1000);
+            fview.PropertySet = new PropertySet(BasePropertySet.IdOnly);
+            fview.PropertySet.Add(FolderSchema.DisplayName);
+            fview.PropertySet.Add(FolderSchema.FolderClass);
+            fview.PropertySet.Add(FolderSchema.ParentFolderId);
+            fview.PropertySet.Add(FolderSchema.WellKnownFolderName);
+
+            fview.Traversal = FolderTraversal.Deep;
+
+
+            var ss = service.FindFolders(new FolderId(WellKnownFolderName.Root, "psgsharedinbox@psgglobal.com"), fview).Result;
+
+           // var fss = ss.FirstOrDefault(x => x.DisplayName == "Shared Inbox ArchivalMail");
+            var saveFss = ss.FirstOrDefault(x => x.WellKnownFolderName.HasValue && x.WellKnownFolderName.Value == WellKnownFolderName.Inbox);
+
 
             EmailMessage msg = (EmailMessage)Item.Bind(service, new ItemId(mailId), set).Result;
             var subject = msg.Subject;
 
-            //  msg.ToRecipients.Add("abhishek@thinkbridge.in");
-            //  msg.Body = new MessageBody("test sample.");
-            //ExtendedPropertyDefinition PidTagReplyRecipientEntries = new ExtendedPropertyDefinition(0x004F, MapiPropertyType.Binary);
-            //ExtendedPropertyDefinition PidTagReplyRecipientNames = new ExtendedPropertyDefinition(0x0050, MapiPropertyType.String);
-            // msg.SetExtendedProperty(PidTagReplyRecipientEntries, ConvertHexStringToByteArray(GenerateFlatList("swati@thinkbridge.in", "Swati K")));
-            //msg.InReplyTo = "replymail";
-            //msg.SetExtendedProperty(PidTagReplyRecipientNames, "Swati K");
-
-            ExtendedPropertyDefinition replyEmail =  new ExtendedPropertyDefinition(DefaultExtendedPropertySet.PublicStrings, "replyemail", MapiPropertyType.Boolean);
-          //  msg.SetExtendedProperty(replyEmail,true);
-            //  await msg.Reply(new MessageBody { BodyType = BodyType.Text, Text = "This sample text on date 4th OCT. Test 4. 20:46" },true);
-
-            ResponseMessage responseMessage = msg.CreateReply(true);
-            msg.From = new EmailAddress { Address = "swati@thinkbridge.in", Name = "Swati K" };
-            string myReply = "This is the message body of the email reply.21:20";
+            ExtendedPropertyDefinition replyEmail = new ExtendedPropertyDefinition(DefaultExtendedPropertySet.PublicStrings, "replyemail", MapiPropertyType.Boolean);
+          //  msg.From = new EmailAddress { Address = "compassa@thinkbridge.in", Name = "Compass A" };
+         //  var r= (EmailMessage) msg.Update(ConflictResolutionMode.NeverOverwrite).Result;
+            ResponseMessage responseMessage =  msg.CreateReply(true);
+            string myReply = "testing knock! knock!";
+            ;
+            
             responseMessage.BodyPrefix = myReply;
-        
+
             // // Send the response message.
             // // This method call results in a CreateItem call to EWS.
             try
             {
-                // to set replyemail prop true in reply mail so it will exclude from creating the task in next iterations
-                var  e =  await responseMessage.Save();
+                var e = await responseMessage.Save();
+               var s=  e.Update(ConflictResolutionMode.AlwaysOverwrite).Result;
+                e.From = new EmailAddress { Address = "psgsharedinbox@psgglobal.com" };
                 e.SetExtendedProperty(replyEmail, true);
                 await e.Send();
-            
 
+                //to set replyemail prop true in reply mail so it will exclude from creating the task in next iterations
+                //var replyMessage = responseMessage.Save(saveFss.Id).Result;
+                //var replyUpdate = replyMessage.Update(ConflictResolutionMode.AlwaysOverwrite).Result;
+                //replyMessage.SetExtendedProperty(replyEmail, true);
+
+                //replyMessage.From = new EmailAddress { Address = "compassa@thinkbridge.in", Name = "Compass A" };
+                //await replyMessage.SendAndSaveCopy();
+                //  var movedEMail = msg.Move(fss.Id);
             }
             catch (System.Exception ex)
             {
@@ -235,9 +310,9 @@ namespace OutlookMailParser_POC
 
 
 
-  
 
-    internal static String GenerateFlatList(String SMTPAddress, String DisplayName)
+
+        internal static String GenerateFlatList(String SMTPAddress, String DisplayName)
         {
             String abCount = "01000000";
             String AddressId = GenerateOneOff(SMTPAddress, DisplayName);
@@ -343,11 +418,11 @@ namespace OutlookMailParser_POC
                 context.ExecuteQuery();
                 var documentUrl = site.Host + uploadFile.ServerRelativeUrl;
 
-             
+
                 return documentUrl;
-                
+
             }
-             
+
             return string.Empty;
         }
 
@@ -365,7 +440,7 @@ namespace OutlookMailParser_POC
 
                 var today = DateTime.UtcNow.Date.ToString("MM/dd/yyyy");
 
-                var folderPath = context.Web.GetFolderByServerRelativeUrl("Shared Documents/RPA/Shared Inbox POC/"+today+"/TaskId_" +1111.ToString() );
+                var folderPath = context.Web.GetFolderByServerRelativeUrl("Shared Documents/RPA/Shared Inbox POC/" + today + "/TaskId_" + 1111.ToString());
                 try
                 {
                     context.Load(folderPath, k => k.Name, k => k.Files, k => k.Folders);
@@ -385,7 +460,7 @@ namespace OutlookMailParser_POC
 
                     }
                 }
-                catch(ServerException ex)
+                catch (ServerException ex)
                 {
                     var folderPath1 = context.Web.GetFolderByServerRelativeUrl("Shared Documents/RPA/Shared Inbox POC/" + today + "/");
 
@@ -395,14 +470,14 @@ namespace OutlookMailParser_POC
                     Console.WriteLine("New folder Created");
 
                 }
-              
+
 
                 //var newF =  folderPath.Folders.Add(today);
                 //context.Load(newF);
                 //context.ExecuteQuery();
 
             }
-              
+
         }
     }
-    }
+}
